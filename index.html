@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en" class=""> <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projectile Motion Simulation (Improved Styles)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script type="module" src="https://cdn.jsdelivr.net/npm/heroicons@2.1.3/24/outline/index.min.js"></script>
+    <script nomodule src="https://cdn.jsdelivr.net/npm/heroicons@2.1.3/24/outline/index.js"></script>
+
+    <script>
+        // Tailwind dark mode configuration
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+    
+                        primary: {
+                            DEFAULT: '#3b82f6', // Blue 500
+                            hover: '#2563eb', // Blue 600
+                            focus: '#1d4ed8'  // Blue 700
+                        },
+                        secondary: { // Used for canvas background
+                            light: '#f0f9ff', // Sky 50
+                            dark: '#1f2937'   // Gray 800 (Darker canvas bg)
+                        },
+                        accent: { // Used for checkboxes, slider thumbs
+                            DEFAULT: '#3b82f6', // Blue 500
+                            dark: '#60a5fa'  // Blue 400 (Brighter for dark mode)
+                        },
+                        
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+     
+        body {
+            font-family: 'Inter', sans-serif;
+            overscroll-behavior: none;
+            @apply bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-200 transition-colors duration-300;
+        }
+
+        /* Slider Styles */
+        input[type="range"] {
+            -webkit-appearance: none; appearance: none; width: 100%; height: 8px; /* Slightly thicker track */
+            @apply bg-gray-300 dark:bg-gray-600 rounded-full outline-none cursor-pointer transition-colors duration-200;
+        }
+        input[type="range"]:hover {
+             @apply bg-gray-400 dark:bg-gray-500;
+        }
+    
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; appearance: none; width: 20px; height: 20px; /* Larger thumb */
+            @apply bg-accent dark:bg-accent-dark rounded-full cursor-pointer border-2 border-white dark:border-gray-800 shadow transition-transform duration-150 ease-in-out;
+        }
+        input[type="range"]::-moz-range-thumb {
+             width: 20px; height: 20px;
+             @apply bg-accent dark:bg-accent-dark rounded-full cursor-pointer border-2 border-white dark:border-gray-800 shadow;
+        }
+         input[type="range"]:active::-webkit-slider-thumb {
+            transform: scale(1.15); 
+         }
+         input[type="range"]:active::-moz-range-thumb {
+            transform: scale(1.15);
+         }
+
+        /* Canvas Styles */
+        canvas {
+            display: block;
+            @apply border border-gray-300 dark:border-gray-700 rounded-lg shadow-md; 
+            @apply bg-secondary-light dark:bg-secondary-dark transition-colors duration-300;
+            touch-action: none; max-width: 100%; height: auto;
+        }
+
+        /* Button Styles */
+         button {
+            @apply px-4 py-2 rounded-lg font-semibold transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-900 shadow-sm hover:shadow-md;
+         }
+         .btn-primary {
+             @apply bg-primary text-white hover:bg-primary-hover focus:ring-primary;
+         }
+         .btn-primary:active {
+             @apply bg-primary-focus transform scale-[0.98]; /* Add active state */
+         }
+         .btn-secondary {
+             @apply bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 focus:ring-gray-400;
+         }
+          .btn-secondary:active {
+             @apply bg-gray-400 dark:bg-gray-500 transform scale-[0.98]; /* Add active state */
+          }
+
+         /* Value Display Styles */
+         .value-display {
+            @apply font-medium text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 px-2.5 py-1 rounded-md min-w-[5em] text-right tabular-nums shadow-inner; /* Added shadow */
+         }
+
+         /* Label Styles */
+         label.input-label { /* Specific class for slider/input labels */
+            @apply block text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1.5;
+         }
+         label.checkbox-label { /* Specific class for checkbox labels */
+             @apply ml-2 text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer;
+         }
+
+         /* Checkbox Styles - Using accent color */
+         input[type="checkbox"] {
+            @apply h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-accent dark:text-accent-dark focus:ring-accent dark:focus:ring-accent-dark bg-gray-100 dark:bg-gray-700 focus:ring-offset-0 focus:ring-2 cursor-pointer;
+         }
+
+         /* Target Status Styles */
+        #targetStatus { font-weight: 600; }
+        .hit { @apply text-green-600 dark:text-green-400; }
+        .miss { @apply text-red-600 dark:text-red-400; }
+        .pending { @apply text-gray-500 dark:text-gray-400; }
+
+        /* Image Styles */
+        .control-image {
+            @apply w-full h-28 object-cover rounded-lg mb-4 shadow-md border border-gray-200 dark:border-gray-700; /* Slightly taller */
+        }
+
+        /* Header Styles */
+        header {
+            @apply bg-white dark:bg-gray-800 shadow-md w-full mb-6 p-4 flex justify-between items-center sticky top-0 z-10 transition-colors duration-300; /* Sticky header */
+        }
+        #themeToggleButton {
+            @apply p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-gray-800;
+        }
+        #themeIcon {
+             @apply w-6 h-6;
+        }
+
+        /* Control Panel Section Styling */
+        .control-section {
+             @apply border border-gray-200 dark:border-gray-700 p-4 rounded-lg shadow-sm space-y-4 bg-white dark:bg-gray-800 transition-colors duration-300;
+        }
+        .control-section h3 {
+            @apply text-base font-semibold text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 pb-2 mb-3;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1 class="text-2xl font-bold text-gray-800 dark:text-white">Projectile Motion Simulator</h1>
+        <button id="themeToggleButton" aria-label="Toggle dark mode">
+            <svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+              </svg>
+        </button>
+    </header>
+
+    <main class="flex flex-col lg:flex-row items-start justify-center w-full px-4 pb-4 gap-6">
+
+        <div class="w-full lg:w-[340px] xl:w-[400px] bg-gray-50 dark:bg-gray-900 p-4 rounded-xl shadow-lg space-y-5 transition-colors duration-300 flex-shrink-0">
+            <h2 class="text-xl font-semibold mb-3 text-gray-800 dark:text-white text-center">Controls</h2>
+
+            <div class="control-section">
+                 <h3>Launch Parameters</h3>
+                <img src="https://placehold.co/600x400/e0f2fe/0c4a6e?text=Launch+Setup"
+                    alt="Illustration of launch setup"
+                    class="control-image"
+                    onerror="this.onerror=null; this.src='https://placehold.co/600x400/e2e8f0/475569?text=Image+Error';">
+                <div>
+                    <label for="initialSpeed" class="input-label">Initial Speed (m/s)</label>
+                    <div class="flex items-center space-x-3">
+                        <input type="range" id="initialSpeed" name="initialSpeed" min="1" max="100" value="50" class="flex-grow">
+                        <span id="initialSpeedValue" class="value-display">50 m/s</span>
+                    </div>
+                </div>
+                <div>
+                    <label for="launchAngle" class="input-label">Launch Angle (&deg;)</label>
+                     <div class="flex items-center space-x-3">
+                        <input type="range" id="launchAngle" name="launchAngle" min="0" max="90" value="45" class="flex-grow">
+                        <span id="launchAngleValue" class="value-display">45&deg;</span>
+                    </div>
+                </div>
+                <div>
+                    <label for="initialHeight" class="input-label">Initial Height (m)</label>
+                     <div class="flex items-center space-x-3">
+                        <input type="range" id="initialHeight" name="initialHeight" min="0" max="50" value="0" step="0.5" class="flex-grow">
+                        <span id="initialHeightValue" class="value-display">0.0 m</span>
+                    </div>
+                </div>
+            </div>
+
+             <div class="control-section">
+                 <h3>Physics Parameters</h3>
+                 <img src="https://placehold.co/600x400/d1fae5/065f46?text=Physics+Forces"
+                      alt="Illustration of forces like gravity"
+                      class="control-image"
+                      onerror="this.onerror=null; this.src='https://placehold.co/600x400/e2e8f0/475569?text=Image+Error';">
+                <div>
+                    <label for="mass" class="input-label">Mass (kg)</label>
+                     <div class="flex items-center space-x-3">
+                        <input type="range" id="mass" name="mass" min="0.1" max="10" value="1" step="0.1" class="flex-grow">
+                        <span id="massValue" class="value-display">1.0 kg</span>
+                    </div>
+                </div>
+                <div>
+                    <label for="gravity" class="input-label">Gravity (m/s²)</label>
+                     <div class="flex items-center space-x-3">
+                        <input type="range" id="gravity" name="gravity" min="1" max="30" value="9.8" step="0.1" class="flex-grow">
+                        <span id="gravityValue" class="value-display">9.8 m/s²</span>
+                    </div>
+                </div>
+                <div>
+                    <label for="restitution" class="input-label">Bounciness (Restitution)</label>
+                     <div class="flex items-center space-x-3">
+                        <input type="range" id="restitution" name="restitution" min="0" max="0.95" value="0.6" step="0.05" class="flex-grow">
+                        <span id="restitutionValue" class="value-display">0.60</span>
+                    </div>
+                </div>
+            </div>
+
+             <div class="control-section">
+                 <h3>Target Settings</h3>
+                 <img src="https://placehold.co/600x400/fee2e2/991b1b?text=Target+Practice"
+                      alt="Illustration of a target"
+                      class="control-image"
+                      onerror="this.onerror=null; this.src='https://placehold.co/600x400/e2e8f0/475569?text=Image+Error';">
+                <div>
+                    <label for="targetX" class="input-label">Target Distance (m)</label>
+                     <div class="flex items-center space-x-3">
+                        <input type="range" id="targetX" name="targetX" min="10" max="300" value="150" step="5" class="flex-grow">
+                        <span id="targetXValue" class="value-display">150 m</span>
+                    </div>
+                </div>
+                 <div>
+                    <label for="targetWidth" class="input-label">Target Width (m)</label>
+                     <div class="flex items-center space-x-3">
+                        <input type="range" id="targetWidth" name="targetWidth" min="1" max="50" value="10" step="1" class="flex-grow">
+                        <span id="targetWidthValue" class="value-display">10 m</span>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="control-section">
+                 <h3>Options</h3>
+                <div class="flex items-center">
+                    <input type="checkbox" id="airResistance" name="airResistance">
+                    <label for="airResistance" class="checkbox-label">Enable Air Resistance</label>
+                </div>
+                 <div class="flex items-center">
+                    <input type="checkbox" id="showIdeal" name="showIdeal">
+                    <label for="showIdeal" class="checkbox-label">Show Ideal Trajectory</label>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 pt-2">
+                <button id="launchButton" class="btn-primary flex-1">
+                    Launch Projectile
+                </button>
+                <button id="resetButton" class="btn-secondary flex-1">
+                    Reset Simulation
+                </button>
+            </div>
+
+            <div class="control-section mt-4">
+                 <h3>Results</h3>
+                 <div class="text-sm space-y-1.5">
+                     <div class="flex justify-between items-center">
+                         <span class="text-gray-600 dark:text-gray-400">Target Status:</span>
+                         <span id="targetStatus" class="pending px-2 py-0.5 rounded-full text-xs">Pending...</span>
+                     </div>
+                     <div class="flex justify-between">
+                         <span class="text-gray-600 dark:text-gray-400">Max Height:</span>
+                         <span id="maxHeightInfo" class="font-semibold text-gray-800 dark:text-gray-200">-- m</span>
+                     </div>
+                     <div class="flex justify-between">
+                         <span class="text-gray-600 dark:text-gray-400">Range:</span>
+                         <span id="rangeInfo" class="font-semibold text-gray-800 dark:text-gray-200">-- m</span>
+                     </div>
+                     <div class="flex justify-between">
+                         <span class="text-gray-600 dark:text-gray-400">Time of Flight:</span>
+                         <span id="timeInfo" class="font-semibold text-gray-800 dark:text-gray-200">-- s</span>
+                     </div>
+                     <div class="flex justify-between">
+                         <span class="text-gray-600 dark:text-gray-400">Bounces:</span>
+                         <span id="bounceCountInfo" class="font-semibold text-gray-800 dark:text-gray-200">--</span>
+                     </div>
+                 </div>
+            </div>
+        </div>
+
+        <div class="w-full lg:flex-1 flex justify-center items-center p-2 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+             <canvas id="simulationCanvas" width="800" height="600"></canvas> </div>
+    </main>
+
+    <script type="module" src="ui.js"></script>
+
+</body>
+</html>
